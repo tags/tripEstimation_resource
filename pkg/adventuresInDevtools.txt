@@ -1,0 +1,23 @@
+fun1 <- function(x) rnorm(x)
+fun2 <- function(y) fun1(y) + 10
+ds <- cbind(1:10, rnorm(10))
+
+## example package with 
+package.skeleton("testpkg")
+
+load_all("testpkg")
+
+testpkg::fun1
+
+build("testpkg")
+
+## edit .Rd files to have a title, then build with installed Rtools
+##  and R in path etc., otherwise this fails on missing/empty "Rd files must have a non-empty \title."
+
+build("testpkg", binary = TRUE)
+
+## to use winbuilder (but this fails on FTP for me)
+build_win("testpkg")
+
+## installs and reloads (test by changing fun1 definition and DESCRIPTION)
+install("testpkg")
