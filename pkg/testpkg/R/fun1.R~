@@ -1,2 +1,0 @@
-fun1 <-
-function(x) rnorm(x)

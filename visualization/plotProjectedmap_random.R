@@ -1,9 +1,16 @@
 
-plotthestuff <- function(xlim, ylim, proj = "+proj=laea") {
+
+
+
+
+
+plotbuilder <- function(xlim, ylim, proj = "+proj=laea") {
     require(maptools)
     require(rgdal)
     require(raster)
     require(rgeos)
+    if(missing(xlim)) xlim <- c(-175, 175)
+    if(missing(ylim)) ylim <- c(-89, 89)
     xcentre <- round(xlim[1] + diff(xlim)/2)
     ycentre <- round(ylim[1] + diff(ylim)/2)
     if (length(grep("+lon_0", proj)) == 0) {
@@ -24,16 +31,16 @@ plotthestuff <- function(xlim, ylim, proj = "+proj=laea") {
     ## bug in gridat should use stringsAsFactors = FALSE
     ga$labels <- as.character(ga$labels)
 
-    function(chain, legend = TRUE, returnproj = FALSE) {
+    function(X, legend = TRUE, returnproj = FALSE) {
         if (returnproj) return(proj)
-            xm <- apply(chain$x, 1:2, mean)
-            pxm <-    project(xm, proj)
+##             xm <- apply(chain$x, 1:2, mean)
+            pxm <-    project(X, proj)
             plot(pxm, type = "n", asp = 1, xlab = "", ylab = "", axes = FALSE)
             plot(mp, col = "transparent", asp = 1,  xlab = "", ylab = "", axes = FALSE)
             ##box()
             plot(mp, add = TRUE, col ="lightgrey")
-            lines(project(chain$x[,,1], proj), lwd = 2)
-            lines(project(chain$last.x, proj),col="red")
+            lines(project(X, proj), lwd = 2)
+            lines(project(jitter(X), proj),col="red")
 op <- par(xpd = TRUE)
 
             plot(spTransform(gl, CRS(proj)), col = "darkgrey", lty = 2, add = TRUE)
