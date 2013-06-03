@@ -2,7 +2,7 @@
 
 mlp <- function(x, trim.prob = 0.05, output.trip = TRUE, tripID = "tripID1") {
   if (!inherits(x, "pimg.list")) stop("input must be a pimg.list")
-  if (attr(x, "Z")) warning("running on Z inputs rather than Z")
+  if (attr(x, "Z")) warning("running on Z inputs rather than X")
   n <- length(x)
   
   output <- data.frame(best.x = numeric(n), best.y = numeric(n), 
@@ -34,7 +34,8 @@ mlp <- function(x, trim.prob = 0.05, output.trip = TRUE, tripID = "tripID1") {
     }
   }
   
-  output$times <- attr(x, "times") + ISOdatetime(1970, 1, 1, 0, 0, 0, tz = "GMT")
+  output$times <- attr(x, "times") 
+  ## ISOdatetime(1970, 1, 1, 0, 0, 0, tz = "GMT")
   output$id <- tripID
   
   if (output.trip) {
