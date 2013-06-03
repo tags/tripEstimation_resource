@@ -23,14 +23,14 @@ Pimage <- function(tm, grid = NULL, Z = TRUE) {
     pbase <- p0(xmin(grid), xmax(grid), ymin(grid), ymax(grid), dims[1L:2L])
     pim <- vector("list", n)
     for (i in seq_along(pim)) pim[[i]] <- pbase
-    if (Z) {
-        Ztimes <- tm[-length(tm)] + diff(unclass(tm))/2
-        attr(pim, "times") <- Ztimes
-        attr(pim, "Xtimes") <- tm
-    }
-    else {
+    ##if (Z) {
+        ##Ztimes <- tm[-length(tm)] + diff(unclass(tm))/2
         attr(pim, "times") <- tm
-    }
+        ##attr(pim, "Xtimes") <- tm
+   ## }
+   ## else {
+    ##    attr(pim, "times") <- tm
+   ## }
     attr(pim, "Z") <- Z
     class(pim) <- c("Pimage")
     pim
@@ -47,17 +47,73 @@ print.Pimage <- function(x, ...) {
   ## this needs to know the x/y/time range, and possibly the sizes of all images, whether any are NULL or funny
     ext <- extent(as.raster(x))
     trange <- format(range(attr(x, "times")))
-    cat("Class    :", class(x), "\nLength    :", length(x),  "\nTemporal Extent :", trange, "\n")
+    Z <- .Z(x)
+    cat("Class    :", class(x), c("(Primary/X)", "(Intermediate/Z)")[Z + 1], "\nLength    :", length(x),  "\nTemporal Extent :", trange, "\n")
     ##cat("Time Steps   :")
     ##str(attr(x, "times"))
     print(ext)
     invisible(NULL)
 }
-#summary.Pimage
+summary.Pimage <- function(object, ...) {
+  summary(getValues(as.raster(object)))
+}
+
+.times <- function(x) {
+  UseMethod(".times")
+}
+.times.Pimage <- function(x) {
+    attr(x, "times")
+}
+
+## must be generic for replacement method to work
+".times<-" <- function(x, value) {
+  UseMethod(".times<-")
+}
+".times<-.Pimage" <- function(x, value) {
+  attr(x, "times") <- value
+  x
+}
+.Z <- function(x) {
+  UseMethod(".Z")
+}
+.Z.Pimage <- function(x) {
+  attr(x, "Z")
+}
+".Z<-" <- function(x, value) {
+  UseMethod(".Z<-")
+}
+".Z<-.Pimage" <- function(x, value) {
+  attr(x, "Z") <- value
+  x
+}
+
 is.Pimage <- function(x) {inherits(x, "Pimage")}
 
-###str.Pimage
-#"[.Pimage"
+"[.Pimage" <- function(x, i, j, drop = TRUE, ...) {
+  timeobject <- .times(x)
+  
+  n <- length(x)
+  if(nargs() == 1) n2 <-  n
+  if (missing(i)) i <- seq_len(n)
+  
+  if (all(class(i) == "logical")) {
+    n2 <- sum(i)
+    i <- which(rep(i, length.out = n2))
+  }
+  
+  class(x) <- NULL
+  val <- NextMethod("[")
+  ##browser()
+  class(val) <- "Pimage"
+
+  .times(val) <- timeobject
+  
+  as.raster(val)
+  
+}
+
+  ###str.Pimage
+  
 ###"[<-.Pimage"
 ##"$.Pimage"
 ##"$<-.Pimage"
@@ -86,7 +142,8 @@ as.Pimage.Pimage <- function(x) {
 }
 
 as.raster.Pimage <- function(x) {
-    ## TODO, patch in the data
+    ## TODO, patch in the data, like tripEstimation::combine()
+    ##  include message on object about its origin
     x <- x[[1]]
     raster(nrows = x$xbound[3L], ncols = x$ybound[3L], xmn = x$xbound[1L], xmx = x$xbound[2L], ymn = x$ybound[1L], ymx = x$ybound[2L])
 }
