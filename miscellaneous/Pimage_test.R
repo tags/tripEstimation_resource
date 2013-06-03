@@ -17,3 +17,10 @@ summary(p)
 .Z(p)
 
 
+
+## could hide this with a default for input model object to bin()
+grid <- .chaingrid(fit$z)
+p <- Pimage(fit$model$twilight, grid)
+
+pZ <- bin(p, fit$z)
+
