@@ -36,7 +36,11 @@ Pimage <- function(tm, grid = NULL, Z = TRUE) {
     pim
 }
 
-
+# trim0<- function(x, ...) {
+#  
+#   x[!x > 0] <- NA
+#   trim(x)
+# }
 .chaingrid <- function(x) {
   xrange <- range(x[,1,])
   yrange <- range(x[,2,])
@@ -69,12 +73,15 @@ summary.Pimage <- function(object, ...) {
   summary(getValues(as.raster(object)))
 }
 
+as.POSIXct.Pimage <- function(x, tz = "", ...) {
+  .times(x)
+}
 .times <- function(x) {
   UseMethod(".times")
 }
 .times.Pimage <- function(x) {
     out <- attr(x, "times")
-    
+    ##if (.Z(x)) out <- out[-length(out)]
     out
 }
 
