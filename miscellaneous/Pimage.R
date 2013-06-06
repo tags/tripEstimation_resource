@@ -1,3 +1,35 @@
+## temporary expt
+
+bin.chain <- function (chainobject, grid = NULL, weights = NULL, Z = TRUE)
+{
+    ## weights from tm difference if Z
+    ## times from model
+    ## grid from xrange/yrange chain if NULL
+
+    times <- .times(chainobject)
+    if (Z) times <- times[-length(times)]
+    n <- length(times)
+
+    if (is.null(weights)) {
+        if (Z) weights <- c(diff(unclass(times)/3600)) else weights <- seq_len(n)
+    }
+
+    if(Z) chain <- chainobject$z else chain <- chainobject$x
+
+    if (is.null(grid)) grid <- .chaingrid(chain)
+    pimgs <- Pimage(times, grid = grid, Z = Z)
+  for (k in seq_along(weights)) {
+    pimgs[[k]] <- bin.pimg(pimgs[[k]], t(chain[k, 1:2, ]), weight = weights[k])
+  }
+  ## should also have a flag for whether this is initialized/scaled, so iter number is independent
+  attr(pimgs, "itersbin") <- attr(pimgs, "itersbin") + dim(chain)[3]
+  pimgs
+}
+
+.times.default <- function(x) {
+    x$model$twilight
+}
+
 Pimage <- function(tm, grid = NULL, Z = TRUE) {
     stopifnot(inherits(tm, "POSIXct"))
     stopifnot(inherits(Z, "logical"))
@@ -36,18 +68,18 @@ Pimage <- function(tm, grid = NULL, Z = TRUE) {
     pim
 }
 
-# trim0<- function(x, ...) {
-#  
-#   x[!x > 0] <- NA
-#   trim(x)
-# }
+ trim0<- function(x, ...) {
+
+   x[!x > 0] <- NA
+   trim(x)
+ }
 .chaingrid <- function(x) {
   xrange <- range(x[,1,])
   yrange <- range(x[,2,])
-  raster(nrows = 300, ncols = 300, 
+  raster(nrows = 300, ncols = 300,
          xmn = xrange[1L],
-         xmx = xrange[2L], 
-         ymn = yrange[1L], 
+         xmx = xrange[2L],
+         ymn = yrange[1L],
          ymx = yrange[2L]
          )
 }
@@ -81,7 +113,7 @@ as.POSIXct.Pimage <- function(x, tz = "", ...) {
 }
 .times.Pimage <- function(x) {
     out <- attr(x, "times")
-    ##if (.Z(x)) out <- out[-length(out)]
+    if (.Z(x)) out <- out[-length(out)]
     out
 }
 
@@ -109,18 +141,27 @@ as.POSIXct.Pimage <- function(x, tz = "", ...) {
 
 is.Pimage <- function(x) {inherits(x, "Pimage")}
 
+names.Pimage <- function(x) {
+    format(as.POSIXct(x))
+}
 "[.Pimage" <- function(x, i, j, drop = TRUE, ...) {
   timeobject <- .times(x)
-  
+
   n <- length(x)
   if(nargs() == 1) n2 <-  n
   if (missing(i)) i <- seq_len(n)
-  
+
   if (all(class(i) == "logical")) {
     n2 <- sum(i)
-    i <- which(rep(i, length.out = n2))
+    i <- which(i)
   }
-  
+
+  if (all(class(i) == "character")) {
+      if (length(i) == 1L && i %in% c("days", "weeks", "months", "years")) {
+          ct <- cut(as.POSIXct(x), i, start.on.monday = FALSE)
+      }
+      i <- grep(i, names(x))
+  }
   class(x) <- NULL
   val <- NextMethod("[")
   ##browser()
@@ -129,13 +170,13 @@ is.Pimage <- function(x) {inherits(x, "Pimage")}
   .times(val) <- timeobject
   val <- as.image.Pimage(val)
   raster(val)
-  
+
 }
 
   ###str.Pimage
-  
+
 plot.Pimage <- function(x, ...) {
-  plot(x[seq_along(x)], ...)  
+  plot(x[seq_along(x)], ...)
 }
 ###"[<-.Pimage"
 ##"$.Pimage"
@@ -179,14 +220,14 @@ bin.Pimage <- function (pimgs, chain, weights = NULL)
     weights <- c(diff(unclass(.times(pimgs))/3600))
   }
   if (is.null(weights)) weights <- rep(1, length(pimgs))
-  
-  
+
+
   if (!(length(weights) == length(pimgs))) stop("length of weights do not match length of p-img list")
   if (nrow(chain) != length(pimgs))
     stop("dimensions of chain do not match length of p-img list")
   #dm <- dim(z)
-  
-  
+
+
   for (k in seq_along(weights)) {
     pimgs[[k]] <- bin.pimg(pimgs[[k]], t(chain[k, 1:2, ]), weight = weights[k])
   }
@@ -198,10 +239,10 @@ bin.Pimage <- function (pimgs, chain, weights = NULL)
 
 `bin.pimg` <-
   function(pimg, xy, weight = 1) {
-    
+
     xbnd <- pimg$xbound
     ybnd <- pimg$ybound
-    
+
     ## Bin the locations into the global image coords
     i <- ceiling(xbnd[3]*(xy[,1]-xbnd[1])/(xbnd[2]-xbnd[1]))
     j <- ceiling(ybnd[3]*(xy[,2]-ybnd[1])/(ybnd[2]-ybnd[1]))
@@ -210,7 +251,7 @@ bin.Pimage <- function (pimgs, chain, weights = NULL)
     if(any(keep)) {
       i <- i[keep]
       j <- j[keep]
-      
+
       ## Expand image to new size
       if(is.null(pimg$image)) {
         irange <- range(i)
@@ -233,10 +274,10 @@ bin.Pimage <- function (pimgs, chain, weights = NULL)
               (jrange0[1]-off[2]+1):(jrange0[2]-off[2]+1)] <- pimg$image
         }
       }
-      
+
       ## Add binned points to new image
       img <- img + weight * tabulate(nrow(img) * (j - off[2]) + i + (1 - off[1]), nbins = prod(dim(img)))
-      
+
       pimg <- list(xbound=xbnd,
                    ybound=ybnd,
                    offset=off,
@@ -256,7 +297,7 @@ as.image.Pimage <-
    ## bad <- unlist(lapply(pimgs, function(x) is.null(x$image)))
     `as.matrix.pimg` <-
       function(x) {
-        
+
         pimg <- x
         img <- matrix(0,pimg$xbound[3],pimg$ybound[3])
         if(!is.null(pimg$image)) {
@@ -266,7 +307,7 @@ as.image.Pimage <-
         }
         img
       }
-    
+
     `as.image.pimg` <-
       function(pimg) {
         img <- coords.pimg(pimg)
@@ -278,7 +319,7 @@ as.image.Pimage <-
         list(x=seq(pimg$xbound[1],pimg$xbound[2],length=pimg$xbound[3]),
              y=seq(pimg$ybound[1],pimg$ybound[2],length=pimg$ybound[3]))
       }
-    
+
     res <- as.image.pimg(pimgs[[1]])
     if (length(pimgs) == 1)
       return(res)
@@ -297,10 +338,10 @@ as.image.Pimage <-
 
 `bin.pimg` <-
   function(pimg, xy, weight = 1) {
-    
+
     xbnd <- pimg$xbound
     ybnd <- pimg$ybound
-    
+
     ## Bin the locations into the global image coords
     i <- ceiling(xbnd[3]*(xy[,1]-xbnd[1])/(xbnd[2]-xbnd[1]))
     j <- ceiling(ybnd[3]*(xy[,2]-ybnd[1])/(ybnd[2]-ybnd[1]))
@@ -309,7 +350,7 @@ as.image.Pimage <-
     if(any(keep)) {
       i <- i[keep]
       j <- j[keep]
-      
+
       ## Expand image to new size
       if(is.null(pimg$image)) {
         irange <- range(i)
@@ -332,10 +373,10 @@ as.image.Pimage <-
               (jrange0[1]-off[2]+1):(jrange0[2]-off[2]+1)] <- pimg$image
         }
       }
-      
+
       ## Add binned points to new image
       img <- img + weight * tabulate(nrow(img) * (j - off[2]) + i + (1 - off[1]), nbins = prod(dim(img)))
-      
+
       pimg <- list(xbound=xbnd,
                    ybound=ybnd,
                    offset=off,
